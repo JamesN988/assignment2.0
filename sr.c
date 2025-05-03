@@ -89,3 +89,17 @@ void A_input(struct pkt packet) {
           printf("A_input: Corrupted ACK received, ignored\n");
   }
 }
+void A_timerinterrupt(void) {
+  if (TRACE > 0)
+      printf("A_timerinterrupt: Retransmitting unacked packets\n");
+
+  for (int i = 0; i < WINDOWSIZE; i++) {
+      int idx = (A_base + i) % SEQSPACE;
+      if (A_buffer[idx].sent && !A_buffer[idx].acked) {
+          tolayer3(A, A_buffer[idx].packet);
+          packets_resent++;
+          if (i == 0)
+              starttimer(A, RTT);
+      }
+  }
+}
