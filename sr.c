@@ -156,3 +156,4 @@ void B_input(struct pkt packet) {
           printf("B_input: Corrupted packet received, ignored\n");
   }
 }
+
