@@ -57,3 +57,35 @@ void A_output(struct msg message) {
       window_full++;
   }
 }
+
+void A_input(struct pkt packet) {
+  if (!IsCorrupted(packet)) {
+      int acknum = packet.acknum;
+      if (TRACE > 1)
+          printf("A_input: ACK %d received\n", acknum);
+
+      if (A_buffer[acknum].sent && !A_buffer[acknum].acked) {
+          A_buffer[acknum].acked = true;
+          new_ACKs++;
+          total_ACKs_received++;
+      }
+
+      // Slide window if base is ACKed
+      while (A_buffer[A_base].acked) {
+          A_buffer[A_base].sent = false;
+          A_base = (A_base + 1) % SEQSPACE;
+      }
+
+      stoptimer(A);
+      for (int i = 0; i < WINDOWSIZE; i++) {
+          int idx = (A_base + i) % SEQSPACE;
+          if (A_buffer[idx].sent && !A_buffer[idx].acked) {
+              starttimer(A, RTT);
+              break;
+          }
+      }
+  } else {
+      if (TRACE > 0)
+          printf("A_input: Corrupted ACK received, ignored\n");
+  }
+}
