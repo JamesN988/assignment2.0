@@ -103,3 +103,56 @@ void A_timerinterrupt(void) {
       }
   }
 }
+
+void A_init(void) {
+  for (int i = 0; i < SEQSPACE; i++)
+      A_buffer[i].acked = A_buffer[i].sent = false;
+  A_base = 0;
+  A_nextseq = 0;
+}
+
+static struct pkt B_buffer[SEQSPACE];
+static bool B_received[SEQSPACE];
+static int B_expected = 0;
+
+void B_init(void) {
+    for (int i = 0; i < SEQSPACE; i++)
+        B_received[i] = false;
+    B_expected = 0;
+}
+
+void B_input(struct pkt packet) {
+  if (!IsCorrupted(packet)) {
+      int seq = packet.seqnum;
+
+      if (((seq - B_expected + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
+          if (!B_received[seq]) {
+              B_buffer[seq] = packet;
+              B_received[seq] = true;
+              packets_received++;
+          }
+
+          // Deliver in order
+          while (B_received[B_expected]) {
+              tolayer5(B, B_buffer[B_expected].payload);
+              B_received[B_expected] = false;
+              B_expected = (B_expected + 1) % SEQSPACE;
+          }
+      }
+
+      // Send ACK
+      struct pkt ackpkt;
+      ackpkt.seqnum = 0;
+      ackpkt.acknum = seq;
+      for (int i = 0; i < 20; i++)
+          ackpkt.payload[i] = 0;
+      ackpkt.checksum = ComputeChecksum(ackpkt);
+      tolayer3(B, ackpkt);
+
+      if (TRACE > 1)
+          printf("B_input: ACK %d sent\n", seq);
+  } else {
+      if (TRACE > 0)
+          printf("B_input: Corrupted packet received, ignored\n");
+  }
+}
