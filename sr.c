@@ -19,3 +19,13 @@ int ComputeChecksum(struct pkt packet) {
 bool IsCorrupted(struct pkt packet) {
   return packet.checksum != ComputeChecksum(packet);
 }
+
+struct sender_packet {
+  struct pkt packet;
+  bool acked;
+  bool sent;
+};
+
+static struct sender_packet A_buffer[SEQSPACE];
+static int A_base = 0;
+static int A_nextseq = 0;
