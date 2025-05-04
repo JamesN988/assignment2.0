@@ -21,7 +21,8 @@ static int A_nextseq = 0;
 
 int ComputeChecksum(struct pkt packet) {
   int checksum = packet.seqnum + packet.acknum;
-  for (int i = 0; i < 20; i++)
+  int i;
+  for (i = 0; i < 20; i++)
       checksum += packet.payload[i];
   return checksum;
 }
@@ -37,7 +38,8 @@ void A_output(struct msg message) {
       pkt.seqnum = A_nextseq;
       pkt.acknum = NOTINUSE;
 
-      for (int i = 0; i < 20; i++)
+      int i;
+      for (i = 0; i < 20; i++)
           pkt.payload[i] = message.data[i];
 
       pkt.checksum = ComputeChecksum(pkt);
@@ -74,14 +76,16 @@ void A_input(struct pkt packet) {
           total_ACKs_received++;
       }
 
-      // Slide window if base is ACKed
+      /*Slide window if base is ACKed*/
+
       while (A_buffer[A_base].acked) {
           A_buffer[A_base].sent = false;
           A_base = (A_base + 1) % SEQSPACE;
       }
 
       stoptimer(A);
-      for (int i = 0; i < WINDOWSIZE; i++) {
+      int i;
+      for (i = 0; i < WINDOWSIZE; i++) {
           int idx = (A_base + i) % SEQSPACE;
           if (A_buffer[idx].sent && !A_buffer[idx].acked) {
               starttimer(A, RTT);
@@ -96,8 +100,8 @@ void A_input(struct pkt packet) {
 void A_timerinterrupt(void) {
   if (TRACE > 0)
       printf("A_timerinterrupt: Retransmitting unacked packets\n");
-
-  for (int i = 0; i < WINDOWSIZE; i++) {
+  int i;  
+  for (i = 0; i < WINDOWSIZE; i++) {
       int idx = (A_base + i) % SEQSPACE;
       if (A_buffer[idx].sent && !A_buffer[idx].acked) {
           tolayer3(A, A_buffer[idx].packet);
@@ -109,13 +113,14 @@ void A_timerinterrupt(void) {
 }
 
 void A_init(void) {
-  for (int i = 0; i < SEQSPACE; i++)
+  int i;  
+  for (i = 0; i < SEQSPACE; i++)
       A_buffer[i].acked = A_buffer[i].sent = false;
   A_base = 0;
   A_nextseq = 0;
 }
 
-// Receiver B //
+/* Receiver B */
 
 static struct pkt B_buffer[SEQSPACE];
 static bool B_received[SEQSPACE];
@@ -132,7 +137,8 @@ void B_input(struct pkt packet) {
               packets_received++;
           }
 
-          // Deliver in order
+          /* Deliver in order */
+
           while (B_received[B_expected]) {
               tolayer5(B, B_buffer[B_expected].payload);
               B_received[B_expected] = false;
@@ -140,11 +146,12 @@ void B_input(struct pkt packet) {
           }
       }
 
-      // Send ACK
+      /* Send ACK */
       struct pkt ackpkt;
       ackpkt.seqnum = 0;
       ackpkt.acknum = seq;
-      for (int i = 0; i < 20; i++)
+      int i;
+      for (i = 0; i < 20; i++)
           ackpkt.payload[i] = 0;
       ackpkt.checksum = ComputeChecksum(ackpkt);
       tolayer3(B, ackpkt);
@@ -159,10 +166,11 @@ void B_input(struct pkt packet) {
 
 void B_init(void)
 {
-    for (int i=0; i < SEQSPACE; i++)
+    int i;
+    for (i=0; i < SEQSPACE; i++)
         B_received[i] = false;
     B_expected = 0;
 }
 
 void B_output(struct msg message) {}
-void B_timerinterrupt (void) {}
+void B_timerinterrupt(void) {}
