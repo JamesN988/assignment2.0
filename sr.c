@@ -9,6 +9,16 @@
 #define SEQSPACE 12
 #define NOTINUSE (-1)
 
+struct sender_packet {
+    struct pkt packet;
+    bool acked;
+    bool sent;
+  };
+  
+static struct sender_packet A_buffer[SEQSPACE];
+static int A_base = 0;
+static int A_nextseq = 0;
+
 int ComputeChecksum(struct pkt packet) {
   int checksum = packet.seqnum + packet.acknum;
   for (int i = 0; i < 20; i++)
@@ -20,15 +30,6 @@ bool IsCorrupted(struct pkt packet) {
   return packet.checksum != ComputeChecksum(packet);
 }
 
-struct sender_packet {
-  struct pkt packet;
-  bool acked;
-  bool sent;
-};
-
-static struct sender_packet A_buffer[SEQSPACE];
-static int A_base = 0;
-static int A_nextseq = 0;
 
 void A_output(struct msg message) {
   if (((A_nextseq - A_base + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
@@ -45,8 +46,11 @@ void A_output(struct msg message) {
       A_buffer[A_nextseq].sent = true;
 
       tolayer3(A, pkt);
-      starttimer(A, RTT);
 
+      if (A_base == A_nextseq){
+        starttimer(A, RTT);
+      }
+      
       if (TRACE > 1)
           printf("A_output: Sent packet %d\n", pkt.seqnum);
 
@@ -111,15 +115,11 @@ void A_init(void) {
   A_nextseq = 0;
 }
 
+// Receiver B //
+
 static struct pkt B_buffer[SEQSPACE];
 static bool B_received[SEQSPACE];
 static int B_expected = 0;
-
-void B_init(void) {
-    for (int i = 0; i < SEQSPACE; i++)
-        B_received[i] = false;
-    B_expected = 0;
-}
 
 void B_input(struct pkt packet) {
   if (!IsCorrupted(packet)) {
@@ -165,4 +165,4 @@ void B_init(void)
 }
 
 void B_output(struct msg message) {}
-void B_timerinterupt (void) {}
+void B_timerinterrupt (void) {}
