@@ -65,8 +65,7 @@ void A_output(struct msg message) {
   }
 }
 
-void A_input(struct pkt packet) {
-  int acknum;  
+void A_input(struct pkt packet) {  
   int i;
   
   if (!IsCorrupted(packet)) {
@@ -134,6 +133,9 @@ static bool B_received[SEQSPACE];
 static int B_expected = 0;
 
 void B_input(struct pkt packet) {
+  struct pkt ackpkt;
+  int i;
+    
   if (!IsCorrupted(packet)) {
       int seq = packet.seqnum;
 
