@@ -33,12 +33,13 @@ bool IsCorrupted(struct pkt packet) {
 
 
 void A_output(struct msg message) {
+  int i;
+
   if (((A_nextseq - A_base + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
       struct pkt pkt;
       pkt.seqnum = A_nextseq;
       pkt.acknum = NOTINUSE;
 
-      int i;
       for (i = 0; i < 20; i++)
           pkt.payload[i] = message.data[i];
 
@@ -65,8 +66,12 @@ void A_output(struct msg message) {
 }
 
 void A_input(struct pkt packet) {
+  int acknum;  
+  int i;
+  
   if (!IsCorrupted(packet)) {
       int acknum = packet.acknum;
+
       if (TRACE > 1)
           printf("A_input: ACK %d received\n", acknum);
 
@@ -84,7 +89,7 @@ void A_input(struct pkt packet) {
       }
 
       stoptimer(A);
-      int i;
+      
       for (i = 0; i < WINDOWSIZE; i++) {
           int idx = (A_base + i) % SEQSPACE;
           if (A_buffer[idx].sent && !A_buffer[idx].acked) {
@@ -98,9 +103,11 @@ void A_input(struct pkt packet) {
   }
 }
 void A_timerinterrupt(void) {
+  int i;
+    
   if (TRACE > 0)
       printf("A_timerinterrupt: Retransmitting unacked packets\n");
-  int i;  
+    
   for (i = 0; i < WINDOWSIZE; i++) {
       int idx = (A_base + i) % SEQSPACE;
       if (A_buffer[idx].sent && !A_buffer[idx].acked) {
