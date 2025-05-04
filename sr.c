@@ -135,9 +135,10 @@ static int B_expected = 0;
 void B_input(struct pkt packet) {
   struct pkt ackpkt;
   int i;
-    
+  int seq;
+
   if (!IsCorrupted(packet)) {
-      int seq = packet.seqnum;
+        seq = packet.seqnum;
 
       if (((seq - B_expected + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
           if (!B_received[seq]) {
@@ -156,10 +157,8 @@ void B_input(struct pkt packet) {
       }
 
       /* Send ACK */
-      struct pkt ackpkt;
       ackpkt.seqnum = 0;
       ackpkt.acknum = seq;
-      int i;
       for (i = 0; i < 20; i++)
           ackpkt.payload[i] = 0;
       ackpkt.checksum = ComputeChecksum(ackpkt);
