@@ -157,3 +157,12 @@ void B_input(struct pkt packet) {
   }
 }
 
+void B_init(void)
+{
+    for (int i=0; i < SEQSPACE; i++)
+        B_received[i] = false;
+    B_expected = 0;
+}
+
+void B_output(struct msg message) {}
+void B_timerinterupt (void) {}
