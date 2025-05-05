@@ -33,13 +33,12 @@ bool IsCorrupted(struct pkt packet) {
 
 
 void A_output(struct msg message) {
+    struct pkt pkt;
+    int i;
+
     if (((A_nextseq - A_base + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
-  
         if (TRACE > 1)
             printf("----A: New message arrives, send window is not full, send new messge to layer3!\n");
-  
-        struct pkt pkt;
-        int i;
   
         pkt.seqnum = A_nextseq;
         pkt.acknum = NOTINUSE;
