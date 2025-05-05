@@ -33,36 +33,42 @@ bool IsCorrupted(struct pkt packet) {
 
 
 void A_output(struct msg message) {
-  int i;
-
-  if (((A_nextseq - A_base + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
-      struct pkt pkt;
-      pkt.seqnum = A_nextseq;
-      pkt.acknum = NOTINUSE;
-
-      for (i = 0; i < 20; i++)
-          pkt.payload[i] = message.data[i];
-
-      pkt.checksum = ComputeChecksum(pkt);
-      A_buffer[A_nextseq].packet = pkt;
-      A_buffer[A_nextseq].acked = false;
-      A_buffer[A_nextseq].sent = true;
-
-      if (TRACE > 0)
-        printf("Sending packet %d to layer 3\n", pkt.seqnum);
-
-      tolayer3(A, pkt);  
-
-      if (A_base == A_nextseq)
-        starttimer(A, RTT);
-
-      A_nextseq = (A_nextseq + 1) % SEQSPACE;
-} else {
-    if (TRACE > 0)
-      printf("----A: New message arrives, send window is full\n");
-  window_full++;
-}
-}
+    if (((A_nextseq - A_base + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
+  
+        if (TRACE > 1)
+            printf("----A: New message arrives, send window is not full, send new messge to layer3!\n");
+  
+        struct pkt pkt;
+        int i;
+  
+        pkt.seqnum = A_nextseq;
+        pkt.acknum = NOTINUSE;
+  
+        for (i = 0; i < 20; i++)
+            pkt.payload[i] = message.data[i];
+  
+        pkt.checksum = ComputeChecksum(pkt);
+        A_buffer[A_nextseq].packet = pkt;
+        A_buffer[A_nextseq].acked = false;
+        A_buffer[A_nextseq].sent = true;
+  
+        tolayer3(A, pkt);
+  
+        if (A_base == A_nextseq) {
+            starttimer(A, RTT);
+        }
+  
+        if (TRACE > 0)
+            printf("Sending packet %d to layer 3\n", pkt.seqnum);
+  
+        A_nextseq = (A_nextseq + 1) % SEQSPACE;
+  
+    } else {
+        if (TRACE > 0)
+            printf("----A: New message arrives, send window is full\n");
+        window_full++;
+    }
+  }
 
 void A_input(struct pkt packet) {
     int i;
