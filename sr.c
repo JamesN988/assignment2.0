@@ -149,45 +149,46 @@ static int B_expected = 0;
 
 void B_input(struct pkt packet) {
   struct pkt ackpkt;
-  int i;
-  int seq;
+  int i, seq = packet.seqnum;
 
   if (!IsCorrupted(packet)) {
-    seq = packet.seqnum;
+    int window_end = (B_expected + WINDOWSIZE) % SEQSPACE;
+    int in_window = (B_expected <= window_end)
+        ? (seq >= B_expected && seq < window_end)
+        : (seq >= B_expected || seq < window_end);
 
-    if (((seq - B_expected + SEQSPACE) % SEQSPACE) < WINDOWSIZE) {
+    if (in_window) {
         if (!B_received[seq]) {
             B_buffer[seq] = packet;
             B_received[seq] = true;
             packets_received++;
-        }
 
-        while (B_received[B_expected]) {
-            tolayer5(B, B_buffer[B_expected].payload);
-            B_received[B_expected] = false;
-            B_expected = (B_expected + 1) % SEQSPACE;
-        }
+            if (TRACE > 0)
+                printf("----B: packet %d is correctly received, send ACK!\n", seq);
 
-        if (TRACE > 0)
-            printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
-        
-        ackpkt.acknum = seq;    
-        
+            //* Deliver any in-order packets to layer5*//
+            while (B_received[B_expected]) {
+                tolayer5(B, B_buffer[B_expected].payload);
+                B_received[B_expected] = false;
+                B_expected = (B_expected + 1) % SEQSPACE;
+            }
+        } else {
+            if (TRACE > 0)
+                printf("----B: duplicate packet %d received, resend ACK!\n", seq);
+        }
     } else {
         if (TRACE > 0)
-            printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-    
-
-        ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
+            printf("----B: packet %d out of window, resend ACK!\n", seq);
     }
+
+    //* Send ACK for this packet (always for SR)*//
+    ackpkt.acknum = seq;
 } else {
-    
     if (TRACE > 0)
-        printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
+        printf("----B: corrupted packet received, resend last ACK!\n");
 
     ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
 }
-
 
 ackpkt.seqnum = 0;
 for (i = 0; i < 20; i++)
