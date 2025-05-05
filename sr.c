@@ -71,14 +71,18 @@ void A_output(struct msg message) {
 
 
 void A_input(struct pkt packet) {
-    int i;
-
     if (!IsCorrupted(packet)) {
         if (TRACE > 0)
             printf("----A: uncorrupted ACK %d is received\n", packet.acknum);
         total_ACKs_received++;
 
-        if (A_buffer[packet.acknum].sent && !A_buffer[packet.acknum].acked) {
+        
+        int window_end = (A_base + WINDOWSIZE) % SEQSPACE;
+        int in_window = (A_base <= window_end)
+            ? (packet.acknum >= A_base && packet.acknum < window_end)
+            : (packet.acknum >= A_base || packet.acknum < window_end);
+
+        if (in_window && A_buffer[packet.acknum].sent && !A_buffer[packet.acknum].acked) {
             if (TRACE > 0)
                 printf("----A: ACK %d is not a duplicate\n", packet.acknum);
             A_buffer[packet.acknum].acked = true;
@@ -88,13 +92,16 @@ void A_input(struct pkt packet) {
                 printf("----A: duplicate ACK received, do nothing!\n");
         }
 
-        while (A_base != A_nextseq && A_buffer[A_base].acked) {
+        
+        while (A_buffer[A_base].acked) {
             A_buffer[A_base].sent = false;
+            A_buffer[A_base].acked = false;
             A_base = (A_base + 1) % SEQSPACE;
         }
 
+        
         stoptimer(A);
-        for (i = 0; i < WINDOWSIZE; i++) {
+        for (int i = 0; i < WINDOWSIZE; i++) {
             int idx = (A_base + i) % SEQSPACE;
             if (A_buffer[idx].sent && !A_buffer[idx].acked) {
                 starttimer(A, RTT);
@@ -106,6 +113,7 @@ void A_input(struct pkt packet) {
             printf("----A: corrupted ACK is received, do nothing!\n");
     }
 }
+
 void A_timerinterrupt(void) {
     int i;
     int timer_started = 0;
