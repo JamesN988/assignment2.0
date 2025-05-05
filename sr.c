@@ -71,18 +71,21 @@ void A_output(struct msg message) {
 
 
 void A_input(struct pkt packet) {
+    int i;
+    int window_end = (A_base + WINDOWSIZE) % SEQSPACE;
+    int in_window;
+
     if (!IsCorrupted(packet)) {
         if (TRACE > 0)
             printf("----A: uncorrupted ACK %d is received\n", packet.acknum);
         total_ACKs_received++;
 
         
-        int window_end = (A_base + WINDOWSIZE) % SEQSPACE;
-        int in_window = (A_base <= window_end)
+        in_window = (A_base <= window_end)
             ? (packet.acknum >= A_base && packet.acknum < window_end)
             : (packet.acknum >= A_base || packet.acknum < window_end);
 
-        if (in_window && A_buffer[packet.acknum].sent && !A_buffer[packet.acknum].acked) {
+        if (A_buffer[packet.acknum].sent && !A_buffer[packet.acknum].acked && in_window) {
             if (TRACE > 0)
                 printf("----A: ACK %d is not a duplicate\n", packet.acknum);
             A_buffer[packet.acknum].acked = true;
@@ -95,7 +98,6 @@ void A_input(struct pkt packet) {
         
         while (A_buffer[A_base].acked) {
             A_buffer[A_base].sent = false;
-            A_buffer[A_base].acked = false;
             A_base = (A_base + 1) % SEQSPACE;
         }
 
@@ -149,11 +151,13 @@ static int B_expected = 0;
 
 void B_input(struct pkt packet) {
   struct pkt ackpkt;
-  int i, seq = packet.seqnum;
+  int i, seq, window_end, in_window;
+
+  seq = packet.seqnum;
 
   if (!IsCorrupted(packet)) {
-    int window_end = (B_expected + WINDOWSIZE) % SEQSPACE;
-    int in_window = (B_expected <= window_end)
+    window_end = (B_expected + WINDOWSIZE) % SEQSPACE;
+    in_window = (B_expected <= window_end)
         ? (seq >= B_expected && seq < window_end)
         : (seq >= B_expected || seq < window_end);
 
@@ -166,7 +170,7 @@ void B_input(struct pkt packet) {
             if (TRACE > 0)
                 printf("----B: packet %d is correctly received, send ACK!\n", seq);
 
-            //* Deliver any in-order packets to layer5*//
+            /* Deliver any in-order packets to layer5*/
             while (B_received[B_expected]) {
                 tolayer5(B, B_buffer[B_expected].payload);
                 B_received[B_expected] = false;
@@ -181,7 +185,7 @@ void B_input(struct pkt packet) {
             printf("----B: packet %d out of window, resend ACK!\n", seq);
     }
 
-    //* Send ACK for this packet (always for SR)*//
+    /* Send ACK for this packet (always for SR)*/
     ackpkt.acknum = seq;
 } else {
     if (TRACE > 0)
