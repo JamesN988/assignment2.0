@@ -108,10 +108,11 @@ void A_input(struct pkt packet) {
 }
 void A_timerinterrupt(void) {
     int i;
-    if (TRACE > 0)
+    int timer_started = 0;
+    
+    if (TRACE > 0){
         printf("----A: time out,resend packets!\n");
-
-        int timer_started = 0;
+    }    
         for (i = 0; i < WINDOWSIZE; i++) {
             int idx = (A_base + i) % SEQSPACE;
             if (A_buffer[idx].sent && !A_buffer[idx].acked) {
