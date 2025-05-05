@@ -161,29 +161,30 @@ void B_input(struct pkt packet) {
 
         if (TRACE > 0)
             printf("----B: packet %d is correctly received, send ACK!\n", packet.seqnum);
+        
+        ackpkt.acknum = seq;    
+        
     } else {
         if (TRACE > 0)
             printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-    }
+    
 
-    ackpkt.seqnum = 0;
-    ackpkt.acknum = seq;
-    for (i = 0; i < 20; i++)
-        ackpkt.payload[i] = 0;
-    ackpkt.checksum = ComputeChecksum(ackpkt);
-    tolayer3(B, ackpkt);
+        ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
+    }
 } else {
+    // Corrupted packet
     if (TRACE > 0)
         printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
-    seq = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
 
-    ackpkt.seqnum = 0;
-    ackpkt.acknum = seq;
-    for (i = 0; i < 20; i++)
-        ackpkt.payload[i] = 0;
-    ackpkt.checksum = ComputeChecksum(ackpkt);
-    tolayer3(B, ackpkt);
+    ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
 }
+
+// Construct and send ACK
+ackpkt.seqnum = 0;
+for (i = 0; i < 20; i++)
+    ackpkt.payload[i] = 0;
+ackpkt.checksum = ComputeChecksum(ackpkt);
+tolayer3(B, ackpkt);
 }
 
 void B_init(void)
