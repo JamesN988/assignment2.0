@@ -52,14 +52,15 @@ void A_output(struct msg message) {
         A_buffer[A_nextseq].acked = false;
         A_buffer[A_nextseq].sent = true;
 
+        if (TRACE > 0)
+            printf("Sending packet %d to layer 3\n", pkt.seqnum);
+        
+        tolayer3(A, pkt);
+
         if (A_base == A_nextseq) {
             starttimer(A, RTT); 
         }
 
-        if (TRACE > 0)
-            printf("Sending packet %d to layer 3\n", pkt.seqnum);
-
-        tolayer3(A, pkt);
         A_nextseq = (A_nextseq + 1) % SEQSPACE;
     } else {
         if (TRACE > 0)
