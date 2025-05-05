@@ -88,7 +88,7 @@ void A_input(struct pkt packet) {
                 printf("----A: duplicate ACK received, do nothing!\n");
         }
 
-        while (A_buffer[A_base].acked) {
+        while (A_base != A_nextseq && A_buffer[A_base].acked) {
             A_buffer[A_base].sent = false;
             A_base = (A_base + 1) % SEQSPACE;
         }
@@ -111,19 +111,19 @@ void A_timerinterrupt(void) {
     if (TRACE > 0)
         printf("----A: time out,resend packets!\n");
 
-    for (i = 0; i < WINDOWSIZE; i++) {
-        int idx = (A_base + i) % SEQSPACE;
-        if (A_buffer[idx].sent && !A_buffer[idx].acked) {
-            if (TRACE > 0)
-                printf("---A: resending packet %d\n", A_buffer[idx].packet.seqnum);
-            tolayer3(A, A_buffer[idx].packet);
-            packets_resent++;
-            if (i == 0)
-                starttimer(A, RTT);
+        int timer_started = 0;
+        for (i = 0; i < WINDOWSIZE; i++) {
+            int idx = (A_base + i) % SEQSPACE;
+            if (A_buffer[idx].sent && !A_buffer[idx].acked) {
+                tolayer3(A, A_buffer[idx].packet);
+                packets_resent++;
+                if (!timer_started) {
+                    starttimer(A, RTT);
+                    timer_started = 1;
+                }
+            }
         }
-    }
 }
-
 void A_init(void) {
   int i;  
   for (i = 0; i < SEQSPACE; i++)
@@ -172,14 +172,14 @@ void B_input(struct pkt packet) {
         ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
     }
 } else {
-    // Corrupted packet
+    
     if (TRACE > 0)
         printf("----B: packet corrupted or not expected sequence number, resend ACK!\n");
 
     ackpkt.acknum = (B_expected == 0) ? SEQSPACE - 1 : B_expected - 1;
 }
 
-// Construct and send ACK
+
 ackpkt.seqnum = 0;
 for (i = 0; i < 20; i++)
     ackpkt.payload[i] = 0;
